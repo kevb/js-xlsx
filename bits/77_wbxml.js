@@ -1,8 +1,25 @@
 /* 18.2 Workbook */
 var wbnsregex = /<\w+:workbook/;
 function parse_wb_xml(data, opts) {
-	var wb = { AppVersion:{}, WBProps:{}, WBView:[], Sheets:[], CalcPr:{}, xmlns: "" };
+	var wb = { AppVersion:{}, WBProps:{}, WBView:[], Sheets:[], DefinedNames: {}, CalcPr:{}, xmlns: "" };
 	var pass = false, xmlns = "xmlns";
+
+	var defnameregex = /<(?:\\w+:)?definedName(?!s)(?: xml:space="preserve")?(?:[^>]*)>([^\u2603]*?)<\/(?:\\w+:)?definedName(?!s)>/g;
+	var defname = [];
+
+	while ((defname = defnameregex.exec(data)) !== null) {
+		(function(){
+			var tag = parsexmltag(defname[0]);
+			var ref = defname[1];
+
+			//references without localSheetId attr take precidence
+			if (wb.DefinedNames[tag.name] === undefined || tag.localSheetId === undefined) {
+				wb.DefinedNames[tag.name] = ref;
+			}
+
+		})();
+	}
+
 	data.match(tagregex).forEach(function xml_wb(x) {
 		var y = parsexmltag(x);
 		switch(strip_ns(y[0])) {
